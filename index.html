@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Web AR Application</title>
+    <meta name="description" content="A simple marker-based AR web application using AR.js and A-Frame">
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="info-overlay">
+        <h1>📱 Simple Web AR App</h1>
+        <p>Point your camera at a Hiro marker to see AR content</p>
+        <a href="https://github.com/AR-js-org/AR.js/blob/master/data/images/hiro.png" target="_blank" class="marker-link">Download Hiro Marker</a>
+    </div>
+
+    <a-scene
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; precision: medium;">
+
+        <a-assets>
+            <a-asset-item id="animation-target" src="#"></a-asset-item>
+        </a-assets>
+
+        <!-- Marker-based AR -->
+        <a-marker preset="hiro">
+            <!-- 3D Box -->
+            <a-box
+                position="0 0.5 0"
+                rotation="0 45 0"
+                color="#4CC3D9"
+                animation="property: rotation; to: 0 405 0; loop: true; dur: 10000; easing: linear">
+            </a-box>
+
+            <!-- Sphere -->
+            <a-sphere
+                position="1 0.75 -1"
+                radius="0.5"
+                color="#EF2D5E"
+                animation="property: position; to: 1 1.25 -1; dir: alternate; dur: 2000; loop: true; easing: easeInOutQuad">
+            </a-sphere>
+
+            <!-- Cylinder -->
+            <a-cylinder
+                position="-1 0.75 -1"
+                radius="0.3"
+                height="1.5"
+                color="#FFC65D"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 5000; easing: linear">
+            </a-cylinder>
+
+            <!-- Text -->
+            <a-text
+                value="Hello AR!"
+                position="0 1.5 0"
+                align="center"
+                color="#000000"
+                scale="2 2 2"
+                animation="property: scale; to: 2.5 2.5 2.5; dir: alternate; dur: 1000; loop: true">
+            </a-text>
+
+            <!-- Torus -->
+            <a-torus
+                position="0 0.5 -2"
+                radius="0.5"
+                radius-tubular="0.1"
+                color="#93648D"
+                animation="property: rotation; to: 360 0 360; loop: true; dur: 8000; easing: linear">
+            </a-torus>
+        </a-marker>
+
+        <!-- Camera entity -->
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script src="app.js"></script>
+</body>
+</html>
