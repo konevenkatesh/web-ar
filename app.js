@@ -339,16 +339,29 @@ function performHitTest(frame) {
         const pose = hit.getPose(xrRefSpace);
 
         if (pose) {
+            // Surface detected!
+            if (!reticle.visible) {
+                console.log('✅ Surface detected! Reticle now visible');
+            }
             reticle.visible = true;
             reticle.matrix.fromArray(pose.transform.matrix);
 
             // Show AR instructions less prominently after surface is found
-            if (arInstructions.style.opacity !== '0.5') {
+            if (arInstructions && arInstructions.style.opacity !== '0.5') {
                 arInstructions.style.opacity = '0.5';
+                arInstructions.innerHTML = '<p>✅ Surface found! Tap to place model</p>';
             }
         }
     } else {
+        // No surface detected
+        if (reticle.visible) {
+            console.log('⚠️ Surface lost. Keep scanning...');
+        }
         reticle.visible = false;
+        if (arInstructions && arInstructions.style.opacity !== '1') {
+            arInstructions.style.opacity = '1';
+            arInstructions.innerHTML = '<p>📍 Move your device to scan surfaces</p><p>Look for the placement reticle</p>';
+        }
     }
 }
 
@@ -356,43 +369,77 @@ function performHitTest(frame) {
 // Model Placement
 // ========================================
 function onSelect() {
-    if (!reticle.visible) {
-        console.warn('⚠️ No surface detected for placement');
+    console.log('🎯 Select event triggered!');
+
+    if (!reticle) {
+        console.error('❌ Reticle not initialized!');
         return;
     }
 
-    console.log(`📍 Placing ${currentModel} model`);
-
-    // Clone the selected model
-    const modelToPlace = models[currentModel].clone();
-
-    // Position at reticle location
-    modelToPlace.position.setFromMatrixPosition(reticle.matrix);
-
-    // Get rotation from reticle but keep model upright
-    const rotation = new THREE.Euler();
-    rotation.setFromRotationMatrix(reticle.matrix);
-    modelToPlace.rotation.y = rotation.y;
-
-    // Add to scene
-    scene.add(modelToPlace);
-    placedObjects.push(modelToPlace);
-
-    console.log(`✅ Model placed. Total objects: ${placedObjects.length}`);
-
-    // Add placement animation
-    const initialScale = modelToPlace.scale.clone();
-    modelToPlace.scale.set(0, 0, 0);
-
-    const animateIn = () => {
-        if (modelToPlace.scale.x < initialScale.x) {
-            modelToPlace.scale.x += initialScale.x * 0.1;
-            modelToPlace.scale.y += initialScale.y * 0.1;
-            modelToPlace.scale.z += initialScale.z * 0.1;
-            requestAnimationFrame(animateIn);
+    if (!reticle.visible) {
+        console.warn('⚠️ No surface detected for placement. Move device to scan surfaces.');
+        // Show user feedback
+        if (arInstructions) {
+            arInstructions.innerHTML = '<p style="color: #ff6b6b;">⚠️ No surface detected! Move your device to scan the environment.</p>';
+            setTimeout(() => {
+                arInstructions.innerHTML = '<p>📍 Move your device to scan surfaces</p><p>Look for the placement reticle</p>';
+            }, 2000);
         }
-    };
-    animateIn();
+        return;
+    }
+
+    console.log(`📍 Placing ${currentModel} model at reticle position`);
+    console.log('Current models available:', Object.keys(models));
+
+    if (!models[currentModel]) {
+        console.error(`❌ Model ${currentModel} not found!`);
+        return;
+    }
+
+    try {
+        // Clone the selected model
+        const modelToPlace = models[currentModel].clone(true);
+        console.log('✅ Model cloned successfully');
+
+        // Position at reticle location
+        modelToPlace.position.setFromMatrixPosition(reticle.matrix);
+        console.log('Position set:', modelToPlace.position);
+
+        // Get rotation from reticle but keep model upright
+        const rotation = new THREE.Euler();
+        rotation.setFromRotationMatrix(reticle.matrix);
+        modelToPlace.rotation.y = rotation.y;
+
+        // Add to scene
+        scene.add(modelToPlace);
+        placedObjects.push(modelToPlace);
+
+        console.log(`✅ Model placed successfully! Total objects: ${placedObjects.length}`);
+
+        // Visual feedback to user
+        if (arInstructions) {
+            arInstructions.innerHTML = `<p style="color: #4CAF50;">✅ ${currentModel} placed! (Total: ${placedObjects.length})</p>`;
+            setTimeout(() => {
+                arInstructions.innerHTML = '<p>📍 Move your device to scan surfaces</p><p>Look for the placement reticle</p>';
+            }, 1500);
+        }
+
+        // Add placement animation
+        const initialScale = modelToPlace.scale.clone();
+        modelToPlace.scale.set(0, 0, 0);
+
+        const animateIn = () => {
+            if (modelToPlace.scale.x < initialScale.x) {
+                modelToPlace.scale.x += initialScale.x * 0.1;
+                modelToPlace.scale.y += initialScale.y * 0.1;
+                modelToPlace.scale.z += initialScale.z * 0.1;
+                requestAnimationFrame(animateIn);
+            }
+        };
+        animateIn();
+    } catch (error) {
+        console.error('❌ Error placing model:', error);
+    }
 }
 
 // ========================================
