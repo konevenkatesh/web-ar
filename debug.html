@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXR Diagnostics Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .test-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #ffd700;
+        }
+        .test-item.pass {
+            border-left-color: #00ff00;
+        }
+        .test-item.fail {
+            border-left-color: #ff0000;
+        }
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .test-result {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 20px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #f0f0f0;
+        }
+        .log {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 WebXR Diagnostics</h1>
+        <div id="tests"></div>
+        <button onclick="runTests()">Run Diagnostics</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const testsDiv = document.getElementById('tests');
+        const logDiv = document.getElementById('log');
+
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            entry.textContent = `${icon} ${new Date().toLocaleTimeString()} - ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function addTest(name, result, details) {
+            const testItem = document.createElement('div');
+            testItem.className = `test-item ${result ? 'pass' : 'fail'}`;
+            testItem.innerHTML = `
+                <div class="test-name">${result ? '✅' : '❌'} ${name}</div>
+                <div class="test-result">${details}</div>
+            `;
+            testsDiv.appendChild(testItem);
+        }
+
+        async function runTests() {
+            testsDiv.innerHTML = '';
+            logDiv.innerHTML = '';
+            log('Starting WebXR diagnostics...');
+
+            // Test 1: Browser Detection
+            const userAgent = navigator.userAgent;
+            const isChrome = /Chrome/.test(userAgent);
+            const isAndroid = /Android/.test(userAgent);
+            const isiOS = /iPhone|iPad|iPod/.test(userAgent);
+
+            addTest(
+                'Browser Detection',
+                isChrome && isAndroid,
+                `Browser: ${isChrome ? 'Chrome' : 'Other'}, Platform: ${isAndroid ? 'Android' : isiOS ? 'iOS' : 'Desktop'}`
+            );
+            log(`User Agent: ${userAgent}`);
+
+            // Test 2: HTTPS
+            const isHTTPS = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+            addTest(
+                'HTTPS/Localhost',
+                isHTTPS,
+                `Protocol: ${window.location.protocol}, Hostname: ${window.location.hostname}`
+            );
+
+            // Test 3: Navigator.xr
+            const hasNavigatorXR = 'xr' in navigator;
+            addTest(
+                'navigator.xr Available',
+                hasNavigatorXR,
+                hasNavigatorXR ? 'WebXR API is present' : 'WebXR API not found - use Chrome for Android'
+            );
+
+            if (!hasNavigatorXR) {
+                log('WebXR not available. Please use Chrome for Android 79+', 'error');
+                return;
+            }
+
+            // Test 4: Immersive AR Support
+            try {
+                const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                addTest(
+                    'Immersive AR Support',
+                    isARSupported,
+                    isARSupported ? 'Device supports WebXR AR!' : 'Device does not support AR - check if ARCore is installed'
+                );
+
+                if (isARSupported) {
+                    log('✅ WebXR AR is supported on this device!', 'success');
+                } else {
+                    log('Device does not support immersive-ar. Install Google ARCore.', 'error');
+                }
+            } catch (error) {
+                addTest('Immersive AR Support', false, `Error: ${error.message}`);
+                log(`Error checking AR support: ${error.message}`, 'error');
+            }
+
+            // Test 5: Hit-test feature
+            try {
+                const session = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['hit-test']
+                }).catch(e => null);
+
+                if (session) {
+                    addTest('Hit-test Support', true, 'Hit-test feature is available');
+                    log('Hit-test feature check passed', 'success');
+                    await session.end();
+                } else {
+                    addTest('Hit-test Support', false, 'Could not create session with hit-test');
+                    log('Hit-test feature not available or permission denied', 'error');
+                }
+            } catch (error) {
+                addTest('Hit-test Support', false, `Error: ${error.message}`);
+                log(`Hit-test error: ${error.message}`, 'error');
+            }
+
+            // Test 6: Camera Permission
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                addTest('Camera Permission', true, 'Camera access granted');
+                log('Camera permission granted', 'success');
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                addTest('Camera Permission', false, `Error: ${error.message}`);
+                log(`Camera permission error: ${error.message}`, 'error');
+            }
+
+            // Test 7: WebGL
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            addTest('WebGL Support', !!gl, gl ? 'WebGL is available' : 'WebGL not supported');
+
+            // Test 8: Device Info
+            const deviceInfo = {
+                'Screen': `${window.screen.width}x${window.screen.height}`,
+                'Viewport': `${window.innerWidth}x${window.innerHeight}`,
+                'DPR': window.devicePixelRatio,
+                'Online': navigator.onLine
+            };
+            addTest(
+                'Device Information',
+                true,
+                Object.entries(deviceInfo).map(([k, v]) => `${k}: ${v}`).join(', ')
+            );
+
+            log('Diagnostics complete!', 'success');
+            log('---');
+            log('RECOMMENDATIONS:');
+            if (!isAndroid) {
+                log('⚠️ WebXR AR requires an Android device with ARCore support', 'error');
+            }
+            if (!isChrome) {
+                log('⚠️ Use Chrome for Android for best compatibility', 'error');
+            }
+            if (!isHTTPS) {
+                log('⚠️ WebXR requires HTTPS (or localhost for testing)', 'error');
+            }
+        }
+
+        // Run tests on load
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 500);
+        });
+    </script>
+</body>
+</html>
