@@ -3,105 +3,246 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>WebXR AR Application - Surface Placement</title>
-    <meta name="description" content="WebXR-based markerless AR application with surface detection and 3D model placement">
+    <title>Marker-Based AR Application</title>
+    <meta name="description" content="Marker-based AR application using AR.js - works on ALL devices including iPhone">
 
-    <!-- Import maps for Three.js modules -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-        }
-    }
-    </script>
+    <!-- AR.js and A-Frame -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style-marker.css">
 </head>
 <body>
-    <!-- Status Indicator -->
-    <div id="status-bar" class="status-bar">
-        <span id="status-icon">⏳</span>
-        <span id="status-text">Checking WebXR support...</span>
-    </div>
+    <!-- Info Overlay -->
+    <div id="info-overlay" class="info-overlay">
+        <div class="info-content">
+            <h1>📱 Marker-Based AR App</h1>
+            <p class="subtitle">Works on ALL devices - iPhone, Android, Desktop!</p>
 
-    <!-- Instructions Overlay -->
-    <div id="instructions" class="instructions">
-        <div class="instructions-content">
-            <h1>🌐 WebXR AR App</h1>
-            <h2>How to Use:</h2>
-            <ol>
-                <li><strong>Enter AR:</strong> Tap the "Enter AR" button below</li>
-                <li><strong>Scan Environment:</strong> Move your device (Android: detects surfaces, iPhone: places at fixed distance)</li>
-                <li><strong>Look for Reticle:</strong> A blue/purple ring shows placement location</li>
-                <li><strong>Select Model:</strong> Choose from Building, Floor Plan, or Equipment</li>
-                <li><strong>Place Model:</strong> Tap the screen to place the selected model</li>
-                <li><strong>Multiple Placements:</strong> Place as many models as you want!</li>
-            </ol>
-            <p class="note"><strong>Best on:</strong> Android with ARCore (Chrome 79+)</p>
-            <p class="note"><strong>iPhone:</strong> Use Mozilla WebXR Viewer or IQ3Connect XR app (fallback mode: places 1m ahead)</p>
+            <div class="instructions">
+                <h2>🚀 Quick Start:</h2>
+                <ol>
+                    <li><strong>Print or display markers</strong> (links below)</li>
+                    <li><strong>Allow camera access</strong> when prompted</li>
+                    <li><strong>Point camera at marker</strong></li>
+                    <li><strong>Switch models</strong> using buttons</li>
+                    <li><strong>See 3D models</strong> appear on markers!</li>
+                </ol>
+            </div>
+
+            <div class="markers-section">
+                <h3>📄 Download Markers:</h3>
+                <div class="marker-buttons">
+                    <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png"
+                       target="_blank" class="marker-btn">
+                        🎯 Hiro Marker
+                    </a>
+                    <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/kanji.png"
+                       target="_blank" class="marker-btn">
+                        📐 Kanji Marker
+                    </a>
+                    <a href="marker-custom.html"
+                       target="_blank" class="marker-btn">
+                        ⚙️ Pattern Marker
+                    </a>
+                </div>
+                <p class="note">Print on paper or display on another screen</p>
+            </div>
+
+            <button id="start-ar-btn" class="start-btn">
+                📸 Start AR Experience
+            </button>
+
+            <div class="features">
+                <h3>✨ Features:</h3>
+                <ul>
+                    <li>✅ Works on iPhone Safari (no app needed!)</li>
+                    <li>✅ Works on Android Chrome</li>
+                    <li>✅ Works on Desktop browsers</li>
+                    <li>✅ 3 Models: Building, Floor Plan, Equipment</li>
+                    <li>✅ Switch models in real-time</li>
+                    <li>✅ No WebXR or ARCore required</li>
+                </ul>
+            </div>
         </div>
     </div>
 
-    <!-- Enter AR Button -->
-    <div id="ar-button-container" class="ar-button-container" style="display: none;">
-        <button id="ar-button" class="ar-button">
-            <span class="button-icon">📱</span>
-            Enter AR Mode
-        </button>
-    </div>
-
-    <!-- Model Selection UI (visible in AR) -->
+    <!-- Model Selection UI -->
     <div id="model-selector" class="model-selector" style="display: none;">
-        <div class="model-buttons">
-            <button class="model-btn active" data-model="building">
-                <span class="model-icon">🏢</span>
-                <span class="model-name">Building</span>
-            </button>
-            <button class="model-btn" data-model="floorplan">
-                <span class="model-icon">📐</span>
-                <span class="model-name">Floor Plan</span>
-            </button>
-            <button class="model-btn" data-model="equipment">
-                <span class="model-icon">⚙️</span>
-                <span class="model-name">Equipment</span>
-            </button>
-        </div>
-        <div class="ar-info">
-            <p id="placement-info">👆 Tap to place <span id="current-model-name">Building</span></p>
-        </div>
-    </div>
-
-    <!-- AR Instructions (visible in AR session) -->
-    <div id="ar-instructions" class="ar-instructions" style="display: none;">
-        <p>📍 Move your device to scan surfaces</p>
-        <p>Look for the placement reticle</p>
-    </div>
-
-    <!-- Unsupported Browser Message -->
-    <div id="unsupported-message" class="unsupported-message" style="display: none;">
-        <div class="unsupported-content">
-            <h2>❌ WebXR Not Supported</h2>
-            <p>Your device or browser doesn't support WebXR AR.</p>
-            <h3>Best Experience:</h3>
-            <ul>
-                <li>Android device with ARCore support</li>
-                <li>Chrome for Android (version 79+)</li>
-                <li>Samsung Internet or Edge for Android</li>
-            </ul>
-            <h3>iPhone Users:</h3>
-            <ul>
-                <li>Mozilla WebXR Viewer (App Store)</li>
-                <li>IQ3Connect XR app</li>
-                <li>Note: Uses fallback placement mode</li>
-            </ul>
-            <p class="note">Standard iOS Safari does not support WebXR Device API.</p>
+        <div class="selector-content">
+            <p class="selector-title">Select Model:</p>
+            <div class="model-buttons">
+                <button class="model-btn active" data-model="building" data-marker="hiro">
+                    <span class="model-icon">🏢</span>
+                    <span class="model-name">Building</span>
+                </button>
+                <button class="model-btn" data-model="floorplan" data-marker="kanji">
+                    <span class="model-icon">📐</span>
+                    <span class="model-name">Floor Plan</span>
+                </button>
+                <button class="model-btn" data-model="equipment" data-marker="pattern">
+                    <span class="model-icon">⚙️</span>
+                    <span class="model-name">Equipment</span>
+                </button>
+            </div>
+            <p class="current-model">Current: <span id="current-model">Building on Hiro Marker</span></p>
         </div>
     </div>
 
-    <!-- Canvas for Three.js (created dynamically) -->
+    <!-- AR Status -->
+    <div id="ar-status" class="ar-status" style="display: none;">
+        <p id="status-text">📍 Point camera at marker</p>
+    </div>
 
-    <!-- Main Application Script -->
-    <script type="module" src="app.js"></script>
+    <!-- A-Frame AR Scene -->
+    <a-scene
+        id="ar-scene"
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        vr-mode-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; precision: medium;"
+        style="display: none;">
+
+        <!-- Camera -->
+        <a-entity camera></a-entity>
+
+        <!-- HIRO MARKER - Building Model -->
+        <a-marker id="hiro-marker" preset="hiro" emitevents="true">
+            <!-- Building: Box with windows -->
+            <a-entity id="building-model" visible="true">
+                <!-- Main building -->
+                <a-box
+                    position="0 0.5 0"
+                    depth="0.6"
+                    height="1"
+                    width="0.6"
+                    color="#667eea"
+                    material="metalness: 0.3; roughness: 0.7">
+                </a-box>
+
+                <!-- Windows - front face -->
+                <a-box position="-0.2 0.7 0.31" depth="0.02" height="0.15" width="0.1" color="#87ceeb"></a-box>
+                <a-box position="0 0.7 0.31" depth="0.02" height="0.15" width="0.1" color="#87ceeb"></a-box>
+                <a-box position="0.2 0.7 0.31" depth="0.02" height="0.15" width="0.1" color="#87ceeb"></a-box>
+
+                <a-box position="-0.2 0.5 0.31" depth="0.02" height="0.15" width="0.1" color="#87ceeb"></a-box>
+                <a-box position="0 0.5 0.31" depth="0.02" height="0.15" width="0.1" color="#87ceeb"></a-box>
+                <a-box position="0.2 0.5 0.31" depth="0.02" height="0.15" width="0.1" color="#87ceeb"></a-box>
+
+                <a-box position="-0.2 0.3 0.31" depth="0.02" height="0.15" width="0.1" color="#87ceeb"></a-box>
+                <a-box position="0 0.3 0.31" depth="0.02" height="0.15" width="0.1" color="#87ceeb"></a-box>
+                <a-box position="0.2 0.3 0.31" depth="0.02" height="0.15" width="0.1" color="#87ceeb"></a-box>
+
+                <!-- Roof -->
+                <a-box position="0 1.05 0" depth="0.7" height="0.1" width="0.7" color="#764ba2"></a-box>
+
+                <!-- Label -->
+                <a-text value="Building" position="0 1.3 0" align="center" color="#667eea" scale="0.5 0.5 0.5"></a-text>
+            </a-entity>
+        </a-marker>
+
+        <!-- KANJI MARKER - Floor Plan Model -->
+        <a-marker id="kanji-marker" preset="kanji" emitevents="true">
+            <!-- Floor Plan: Flat plane with grid and walls -->
+            <a-entity id="floorplan-model" visible="true">
+                <!-- Base floor -->
+                <a-plane
+                    position="0 0.01 0"
+                    rotation="-90 0 0"
+                    width="1.5"
+                    height="1.5"
+                    color="#ffffff"
+                    material="opacity: 0.9">
+                </a-plane>
+
+                <!-- Grid lines -->
+                <a-box position="0 0.02 0" depth="1.5" height="0.01" width="0.02" color="#667eea"></a-box>
+                <a-box position="0 0.02 0" depth="0.02" height="0.01" width="1.5" color="#667eea"></a-box>
+
+                <!-- Walls outline -->
+                <a-box position="-0.5 0.1 -0.5" depth="0.05" height="0.2" width="0.05" color="#764ba2"></a-box>
+                <a-box position="0.5 0.1 -0.5" depth="0.05" height="0.2" width="0.05" color="#764ba2"></a-box>
+                <a-box position="-0.5 0.1 0.3" depth="0.05" height="0.2" width="0.05" color="#764ba2"></a-box>
+                <a-box position="0.5 0.1 0.3" depth="0.05" height="0.2" width="0.05" color="#764ba2"></a-box>
+
+                <!-- Room dividers -->
+                <a-box position="0 0.1 0" depth="0.05" height="0.2" width="0.8" color="#667eea" material="opacity: 0.7"></a-box>
+
+                <!-- Door -->
+                <a-box position="0.2 0.05 0" depth="0.05" height="0.1" width="0.15" color="#ffc65d"></a-box>
+
+                <!-- Label -->
+                <a-text value="Floor Plan" position="0 0.4 0" align="center" color="#764ba2" scale="0.5 0.5 0.5"></a-text>
+            </a-entity>
+        </a-marker>
+
+        <!-- PATTERN MARKER - Equipment Model -->
+        <a-marker id="pattern-marker" type="pattern" preset="custom" emitevents="true">
+            <!-- Equipment: Cylinder machinery -->
+            <a-entity id="equipment-model" visible="true">
+                <!-- Base -->
+                <a-cylinder
+                    position="0 0.05 0"
+                    radius="0.3"
+                    height="0.1"
+                    color="#764ba2"
+                    material="metalness: 0.6; roughness: 0.4">
+                </a-cylinder>
+
+                <!-- Main body -->
+                <a-cylinder
+                    position="0 0.35 0"
+                    radius="0.2"
+                    height="0.5"
+                    color="#ffc65d"
+                    material="metalness: 0.5; roughness: 0.5">
+                </a-cylinder>
+
+                <!-- Top sphere -->
+                <a-sphere
+                    position="0 0.65 0"
+                    radius="0.12"
+                    color="#ef2d5e"
+                    material="metalness: 0.7; roughness: 0.3">
+                </a-sphere>
+
+                <!-- Side attachments -->
+                <a-cylinder
+                    position="0.25 0.35 0"
+                    radius="0.05"
+                    height="0.3"
+                    rotation="0 0 90"
+                    color="#667eea">
+                </a-cylinder>
+                <a-cylinder
+                    position="-0.25 0.35 0"
+                    radius="0.05"
+                    height="0.3"
+                    rotation="0 0 90"
+                    color="#667eea">
+                </a-cylinder>
+
+                <!-- Label -->
+                <a-text value="Equipment" position="0 0.9 0" align="center" color="#ffc65d" scale="0.5 0.5 0.5"></a-text>
+
+                <!-- Rotating animation -->
+                <a-animation
+                    attribute="rotation"
+                    to="0 360 0"
+                    dur="10000"
+                    easing="linear"
+                    repeat="indefinite">
+                </a-animation>
+            </a-entity>
+        </a-marker>
+    </a-scene>
+
+    <!-- Help Button -->
+    <button id="help-btn" class="help-btn" style="display: none;">
+        ❓
+    </button>
+
+    <!-- JavaScript -->
+    <script src="app-marker.js"></script>
 </body>
 </html>
