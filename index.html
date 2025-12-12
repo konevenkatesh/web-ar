@@ -2,81 +2,100 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Web AR Application</title>
-    <meta name="description" content="A simple marker-based AR web application using AR.js and A-Frame">
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WebXR AR Application - Surface Placement</title>
+    <meta name="description" content="WebXR-based markerless AR application with surface detection and 3D model placement">
+
+    <!-- Import maps for Three.js modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="info-overlay">
-        <h1>📱 Simple Web AR App</h1>
-        <p>Point your camera at a Hiro marker to see AR content</p>
-        <a href="https://github.com/AR-js-org/AR.js/blob/master/data/images/hiro.png" target="_blank" class="marker-link">Download Hiro Marker</a>
+    <!-- Status Indicator -->
+    <div id="status-bar" class="status-bar">
+        <span id="status-icon">⏳</span>
+        <span id="status-text">Checking WebXR support...</span>
     </div>
 
-    <a-scene
-        embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
-        vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; precision: medium;">
+    <!-- Instructions Overlay -->
+    <div id="instructions" class="instructions">
+        <div class="instructions-content">
+            <h1>🌐 WebXR AR App</h1>
+            <h2>How to Use:</h2>
+            <ol>
+                <li><strong>Enter AR:</strong> Tap the "Enter AR" button below</li>
+                <li><strong>Scan Environment:</strong> Move your device to scan surfaces</li>
+                <li><strong>Look for Reticle:</strong> A ring appears on detected surfaces</li>
+                <li><strong>Select Model:</strong> Choose from Building, Floor Plan, or Equipment</li>
+                <li><strong>Place Model:</strong> Tap the screen to place the selected model</li>
+                <li><strong>Multiple Placements:</strong> Place as many models as you want!</li>
+            </ol>
+            <p class="note"><strong>Requirements:</strong> Android device with ARCore support, Chrome 79+ or Samsung Internet</p>
+        </div>
+    </div>
 
-        <a-assets>
-            <a-asset-item id="animation-target" src="#"></a-asset-item>
-        </a-assets>
+    <!-- Enter AR Button -->
+    <div id="ar-button-container" class="ar-button-container" style="display: none;">
+        <button id="ar-button" class="ar-button">
+            <span class="button-icon">📱</span>
+            Enter AR Mode
+        </button>
+    </div>
 
-        <!-- Marker-based AR -->
-        <a-marker preset="hiro">
-            <!-- 3D Box -->
-            <a-box
-                position="0 0.5 0"
-                rotation="0 45 0"
-                color="#4CC3D9"
-                animation="property: rotation; to: 0 405 0; loop: true; dur: 10000; easing: linear">
-            </a-box>
+    <!-- Model Selection UI (visible in AR) -->
+    <div id="model-selector" class="model-selector" style="display: none;">
+        <div class="model-buttons">
+            <button class="model-btn active" data-model="building">
+                <span class="model-icon">🏢</span>
+                <span class="model-name">Building</span>
+            </button>
+            <button class="model-btn" data-model="floorplan">
+                <span class="model-icon">📐</span>
+                <span class="model-name">Floor Plan</span>
+            </button>
+            <button class="model-btn" data-model="equipment">
+                <span class="model-icon">⚙️</span>
+                <span class="model-name">Equipment</span>
+            </button>
+        </div>
+        <div class="ar-info">
+            <p id="placement-info">👆 Tap to place <span id="current-model-name">Building</span></p>
+        </div>
+    </div>
 
-            <!-- Sphere -->
-            <a-sphere
-                position="1 0.75 -1"
-                radius="0.5"
-                color="#EF2D5E"
-                animation="property: position; to: 1 1.25 -1; dir: alternate; dur: 2000; loop: true; easing: easeInOutQuad">
-            </a-sphere>
+    <!-- AR Instructions (visible in AR session) -->
+    <div id="ar-instructions" class="ar-instructions" style="display: none;">
+        <p>📍 Move your device to scan surfaces</p>
+        <p>Look for the placement reticle</p>
+    </div>
 
-            <!-- Cylinder -->
-            <a-cylinder
-                position="-1 0.75 -1"
-                radius="0.3"
-                height="1.5"
-                color="#FFC65D"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 5000; easing: linear">
-            </a-cylinder>
+    <!-- Unsupported Browser Message -->
+    <div id="unsupported-message" class="unsupported-message" style="display: none;">
+        <div class="unsupported-content">
+            <h2>❌ WebXR Not Supported</h2>
+            <p>Your device or browser doesn't support WebXR AR.</p>
+            <h3>Requirements:</h3>
+            <ul>
+                <li>Android device with ARCore support</li>
+                <li>Chrome for Android (version 79+)</li>
+                <li>Samsung Internet or Edge for Android</li>
+            </ul>
+            <p class="note">iOS Safari does not currently support WebXR Device API.</p>
+            <p class="note">Please visit this page on a compatible Android device.</p>
+        </div>
+    </div>
 
-            <!-- Text -->
-            <a-text
-                value="Hello AR!"
-                position="0 1.5 0"
-                align="center"
-                color="#000000"
-                scale="2 2 2"
-                animation="property: scale; to: 2.5 2.5 2.5; dir: alternate; dur: 1000; loop: true">
-            </a-text>
+    <!-- Canvas for Three.js (created dynamically) -->
 
-            <!-- Torus -->
-            <a-torus
-                position="0 0.5 -2"
-                radius="0.5"
-                radius-tubular="0.1"
-                color="#93648D"
-                animation="property: rotation; to: 360 0 360; loop: true; dur: 8000; easing: linear">
-            </a-torus>
-        </a-marker>
-
-        <!-- Camera entity -->
-        <a-entity camera></a-entity>
-    </a-scene>
-
-    <script src="app.js"></script>
+    <!-- Main Application Script -->
+    <script type="module" src="app.js"></script>
 </body>
 </html>
