@@ -32,13 +32,14 @@
             <h2>How to Use:</h2>
             <ol>
                 <li><strong>Enter AR:</strong> Tap the "Enter AR" button below</li>
-                <li><strong>Scan Environment:</strong> Move your device to scan surfaces</li>
-                <li><strong>Look for Reticle:</strong> A ring appears on detected surfaces</li>
+                <li><strong>Scan Environment:</strong> Move your device (Android: detects surfaces, iPhone: places at fixed distance)</li>
+                <li><strong>Look for Reticle:</strong> A blue/purple ring shows placement location</li>
                 <li><strong>Select Model:</strong> Choose from Building, Floor Plan, or Equipment</li>
                 <li><strong>Place Model:</strong> Tap the screen to place the selected model</li>
                 <li><strong>Multiple Placements:</strong> Place as many models as you want!</li>
             </ol>
-            <p class="note"><strong>Requirements:</strong> Android device with ARCore support, Chrome 79+ or Samsung Internet</p>
+            <p class="note"><strong>Best on:</strong> Android with ARCore (Chrome 79+)</p>
+            <p class="note"><strong>iPhone:</strong> Use Mozilla WebXR Viewer or IQ3Connect XR app (fallback mode: places 1m ahead)</p>
         </div>
     </div>
 
@@ -82,14 +83,19 @@
         <div class="unsupported-content">
             <h2>❌ WebXR Not Supported</h2>
             <p>Your device or browser doesn't support WebXR AR.</p>
-            <h3>Requirements:</h3>
+            <h3>Best Experience:</h3>
             <ul>
                 <li>Android device with ARCore support</li>
                 <li>Chrome for Android (version 79+)</li>
                 <li>Samsung Internet or Edge for Android</li>
             </ul>
-            <p class="note">iOS Safari does not currently support WebXR Device API.</p>
-            <p class="note">Please visit this page on a compatible Android device.</p>
+            <h3>iPhone Users:</h3>
+            <ul>
+                <li>Mozilla WebXR Viewer (App Store)</li>
+                <li>IQ3Connect XR app</li>
+                <li>Note: Uses fallback placement mode</li>
+            </ul>
+            <p class="note">Standard iOS Safari does not support WebXR Device API.</p>
         </div>
     </div>
 

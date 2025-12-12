@@ -243,18 +243,17 @@ function setupARButton() {
 
         if (!xrSession) {
             try {
-                // Request AR session
+                // Request AR session - make hit-test OPTIONAL for iOS compatibility
                 xrSession = await navigator.xr.requestSession('immersive-ar', {
-                    requiredFeatures: ['hit-test'],
-                    optionalFeatures: ['dom-overlay'],
+                    optionalFeatures: ['hit-test', 'dom-overlay'],
                     domOverlay: { root: document.body }
                 });
 
-                console.log('✅ AR session started');
+                console.log('✅ AR session started (hit-test optional)');
                 await onSessionStarted();
             } catch (error) {
                 console.error('❌ Failed to start AR session:', error);
-                alert('Failed to start AR session. Please ensure:\n- Camera permissions are granted\n- Device supports ARCore\n- Using HTTPS or localhost');
+                alert('Failed to start AR session. Please ensure:\n- Camera permissions are granted\n- Device supports WebXR\n- Using HTTPS or localhost');
             }
         } else {
             xrSession.end();
@@ -322,11 +321,57 @@ async function requestHitTestSource() {
             const session = renderer.xr.getSession();
             hitTestSource = await session.requestHitTestSource({ space: xrRefSpace });
             hitTestSourceRequested = true;
-            console.log('✅ Hit test source acquired');
+            console.log('✅ Hit test source acquired - using surface detection');
+
+            // Update instructions for hit-test mode
+            if (arInstructions) {
+                arInstructions.innerHTML = '<p>📍 Move your device to scan surfaces</p><p>Look for the placement reticle</p>';
+            }
         } catch (error) {
-            console.error('❌ Hit test source request failed:', error);
+            console.warn('⚠️ Hit test not available - using fallback placement mode');
+            hitTestSourceRequested = true; // Don't try again
+            hitTestSource = null;
+
+            // Show fallback reticle at fixed distance
+            showFallbackReticle();
+
+            // Update instructions for fallback mode
+            if (arInstructions) {
+                arInstructions.innerHTML = '<p>👆 Tap to place model 1 meter ahead</p><p>Move closer/farther to adjust distance</p>';
+                arInstructions.style.opacity = '1';
+            }
         }
     }
+}
+
+// Fallback reticle for devices without hit-test (iPhone/IQ3Connect)
+function showFallbackReticle() {
+    if (!reticle) return;
+
+    console.log('📍 Using fallback placement mode (no hit-test)');
+    reticle.visible = true;
+
+    // Position reticle 1 meter in front of camera at floor level
+    updateFallbackReticle();
+}
+
+function updateFallbackReticle() {
+    if (!reticle || hitTestSource) return; // Only for fallback mode
+
+    const camera = renderer.xr.getCamera();
+    const direction = new THREE.Vector3(0, 0, -1); // Forward
+    direction.applyQuaternion(camera.quaternion);
+    direction.y = 0; // Keep at floor level
+    direction.normalize();
+
+    // Position 1 meter ahead on the floor
+    const position = camera.position.clone();
+    position.add(direction.multiplyScalar(1.0));
+    position.y = 0; // Floor level
+
+    reticle.position.copy(position);
+    reticle.rotation.x = -Math.PI / 2; // Lie flat
+    reticle.visible = true;
 }
 
 function performHitTest(frame) {
@@ -377,18 +422,20 @@ function onSelect() {
     }
 
     if (!reticle.visible) {
-        console.warn('⚠️ No surface detected for placement. Move device to scan surfaces.');
+        console.warn('⚠️ Reticle not visible for placement.');
         // Show user feedback
         if (arInstructions) {
-            arInstructions.innerHTML = '<p style="color: #ff6b6b;">⚠️ No surface detected! Move your device to scan the environment.</p>';
+            arInstructions.innerHTML = '<p style="color: #ff6b6b;">⚠️ Reticle not visible!</p>';
             setTimeout(() => {
-                arInstructions.innerHTML = '<p>📍 Move your device to scan surfaces</p><p>Look for the placement reticle</p>';
+                const mode = hitTestSource ? 'scan surfaces' : '1 meter ahead';
+                arInstructions.innerHTML = `<p>👆 Tap to place model ${mode}</p>`;
             }, 2000);
         }
         return;
     }
 
     console.log(`📍 Placing ${currentModel} model at reticle position`);
+    console.log(`Placement mode: ${hitTestSource ? 'Hit-test' : 'Fallback'}`);
     console.log('Current models available:', Object.keys(models));
 
     if (!models[currentModel]) {
@@ -402,13 +449,19 @@ function onSelect() {
         console.log('✅ Model cloned successfully');
 
         // Position at reticle location
-        modelToPlace.position.setFromMatrixPosition(reticle.matrix);
-        console.log('Position set:', modelToPlace.position);
+        if (hitTestSource) {
+            // Hit-test mode: use matrix from hit-test
+            modelToPlace.position.setFromMatrixPosition(reticle.matrix);
+            const rotation = new THREE.Euler();
+            rotation.setFromRotationMatrix(reticle.matrix);
+            modelToPlace.rotation.y = rotation.y;
+        } else {
+            // Fallback mode: use reticle position directly
+            modelToPlace.position.copy(reticle.position);
+            modelToPlace.rotation.y = renderer.xr.getCamera().rotation.y;
+        }
 
-        // Get rotation from reticle but keep model upright
-        const rotation = new THREE.Euler();
-        rotation.setFromRotationMatrix(reticle.matrix);
-        modelToPlace.rotation.y = rotation.y;
+        console.log('Position set:', modelToPlace.position);
 
         // Add to scene
         scene.add(modelToPlace);
@@ -420,7 +473,10 @@ function onSelect() {
         if (arInstructions) {
             arInstructions.innerHTML = `<p style="color: #4CAF50;">✅ ${currentModel} placed! (Total: ${placedObjects.length})</p>`;
             setTimeout(() => {
-                arInstructions.innerHTML = '<p>📍 Move your device to scan surfaces</p><p>Look for the placement reticle</p>';
+                const mode = hitTestSource ?
+                    '<p>📍 Move your device to scan surfaces</p><p>Look for the placement reticle</p>' :
+                    '<p>👆 Tap to place model 1 meter ahead</p><p>Move closer/farther to adjust distance</p>';
+                arInstructions.innerHTML = mode;
             }, 1500);
         }
 
@@ -453,9 +509,12 @@ function onXRFrame(time, frame) {
         requestHitTestSource();
     }
 
-    // Perform hit testing
+    // Perform hit testing if available
     if (hitTestSource) {
         performHitTest(frame);
+    } else if (hitTestSourceRequested && !hitTestSource) {
+        // Using fallback mode - update reticle position each frame
+        updateFallbackReticle();
     }
 
     // Render scene
